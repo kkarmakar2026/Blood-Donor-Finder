@@ -1,0 +1,68 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+const AdminLogin = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem("adminToken", data.token); // save JWT
+        navigate("/admin/dashboard");
+      } else {
+        setError(data.error || "Invalid credentials");
+      }
+    } catch (err) {
+      setError("Server error");
+    }
+  };
+
+  return (
+    <div className="flex justify-center items-center h-screen bg-gray-100">
+      <form
+        onSubmit={handleLogin}
+        className="bg-white shadow-md rounded p-6 w-full max-w-sm"
+      >
+        <h2 className="text-xl font-bold mb-4 text-center">Admin Login</h2>
+        {error && <p className="text-red-600 text-center">{error}</p>}
+        <input
+          type="email"
+          placeholder="Admin Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 w-full rounded mb-3"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 w-full rounded mb-3"
+          required
+        />
+        <button
+          type="submit"
+          className="bg-red-600 text-white w-full py-2 rounded hover:bg-red-700"
+        >
+          Login
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default AdminLogin;
