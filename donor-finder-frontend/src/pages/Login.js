@@ -21,9 +21,20 @@ const Login = () => {
       const data = await res.json();
 
       if (res.ok) {
+        // ✅ Save token and user
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/donors");
+
+        // ✅ Auto logout after 1 min (60,000 ms)
+        setTimeout(() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          alert("Session expired. Please log in again.");
+          navigate("/login");
+        }, 60000);
+
+        // ✅ Redirect to profile page
+        navigate("/profile");
       } else {
         setError(data.error || "Login failed");
       }
