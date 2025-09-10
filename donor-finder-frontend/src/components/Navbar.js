@@ -15,7 +15,7 @@ const Navbar = () => {
             <img
               src={logo}
               alt="LifeConnect Logo"
-              className="h-12 w-12 rounded-full bg-white p-1"
+              className="h-20 w-20 rounded-full bg-white p-1"
             />
             <h1 className="font-extrabold text-2xl tracking-wide leading-tight">
               <span className="block sm:inline">Life</span>
