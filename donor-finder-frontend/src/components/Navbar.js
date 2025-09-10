@@ -1,10 +1,20 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react"; // hamburger + close icons
 import logo from "../assets/LifeConnect Logo.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Check if user is logged in
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    navigate("/login"); // redirect after logout
+  };
 
   return (
     <nav className="bg-red-600 text-white shadow-md">
@@ -27,9 +37,22 @@ const Navbar = () => {
           <div className="hidden md:flex space-x-8 text-lg font-semibold">
             <Link to="/" className="hover:underline">Home</Link>
             <Link to="/donors" className="hover:underline">Find Donors</Link>
-            <Link to="/register" className="hover:underline">Register</Link>
-            <Link to="/login" className="hover:underline">Login</Link>
             <Link to="/contact" className="hover:underline">Contact</Link>
+
+            {user ? (
+              <>
+                <Link to="/profile" className="hover:underline">Profile</Link>
+                <button onClick={handleLogout} className="hover:underline">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/register" className="hover:underline">Register</Link>
+                <Link to="/login" className="hover:underline">Login</Link>
+              </>
+            )}
+
             <Link to="/admin/login" className="hover:underline font-bold">
               Admin Login
             </Link>
@@ -52,10 +75,30 @@ const Navbar = () => {
         <div className="md:hidden bg-red-700 px-4 py-3 space-y-2 text-lg font-semibold">
           <Link to="/" className="block hover:underline" onClick={() => setIsOpen(false)}>Home</Link>
           <Link to="/donors" className="block hover:underline" onClick={() => setIsOpen(false)}>Find Donors</Link>
-          <Link to="/register" className="block hover:underline" onClick={() => setIsOpen(false)}>Register</Link>
-          <Link to="/login" className="block hover:underline" onClick={() => setIsOpen(false)}>Login</Link>
           <Link to="/contact" className="block hover:underline" onClick={() => setIsOpen(false)}>Contact</Link>
-          <Link to="/admin/login" className="block hover:underline font-bold" onClick={() => setIsOpen(false)}>
+
+          {user ? (
+            <>
+              <Link to="/profile" className="block hover:underline" onClick={() => setIsOpen(false)}>Profile</Link>
+              <button
+                onClick={() => { handleLogout(); setIsOpen(false); }}
+                className="block w-full text-left hover:underline"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/register" className="block hover:underline" onClick={() => setIsOpen(false)}>Register</Link>
+              <Link to="/login" className="block hover:underline" onClick={() => setIsOpen(false)}>Login</Link>
+            </>
+          )}
+
+          <Link
+            to="/admin/login"
+            className="block hover:underline font-bold"
+            onClick={() => setIsOpen(false)}
+          >
             Admin Login
           </Link>
         </div>

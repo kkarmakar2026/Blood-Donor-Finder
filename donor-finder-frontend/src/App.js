@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
@@ -7,8 +8,9 @@ import Login from "./pages/Login";
 import Donors from "./pages/Donors";
 import Contact from "./pages/Contact";
 import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard."; 
+import AdminDashboard from "./pages/AdminDashboard.";
 import WhatsAppButton from "./components/WhatsAppButton";
+import Profile from "./pages/Profile";   // ✅ Import Profile page
 
 function App() {
   return (
@@ -20,13 +22,12 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/donors" element={<Donors />} />
         <Route path="/contact" element={<Contact />} />
-        
-        {/* ✅ Admin routes */}
+        <Route path="/profile" element={<Profile />} /> {/* ✅ New profile route */}
+
+        {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
-
-      {/* ✅ Floating WhatsApp Button */}
       <WhatsAppButton />
     </Router>
   );
