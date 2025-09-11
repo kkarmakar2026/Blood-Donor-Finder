@@ -37,7 +37,6 @@ const Navbar = () => {
           {/* Desktop Links */}
           <div className="hidden md:flex space-x-8 text-lg font-semibold">
             <Link to="/" className="hover:underline">Home</Link>
-            <Link to="/donors" className="hover:underline">Find Donors</Link>
             <Link to="/contact" className="hover:underline">Contact</Link>
 
             {user ? (

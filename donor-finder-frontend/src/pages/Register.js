@@ -1,19 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Country, State } from "country-state-city";
 
 const Register = () => {
   const navigate = useNavigate();
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+
   const [form, setForm] = useState({
     full_name: "",
     email: "",
-    phone: "",
+    country: "",
+    state: "",
+    district: "",
     city: "",
+    phone: "",
+    whatsapp: "",
     password: "",
+    confirm_password: "",
     blood_group: "",
     availability: true,
+    authorise: false,
   });
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  // Load countries
+  useEffect(() => {
+    setCountries(Country.getAllCountries());
+  }, []);
+
+  // Load states when country changes
+  useEffect(() => {
+    if (form.country) {
+      const countryStates = State.getStatesOfCountry(form.country);
+      setStates(countryStates);
+      setForm((prev) => ({ ...prev, state: "" }));
+    }
+  }, [form.country]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -23,15 +48,28 @@ const Register = () => {
     });
   };
 
-  // ✅ Basic frontend validation
+  // ✅ Validation
   const validateInputs = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+\d{1,4}\s?\d{6,14}$/; // e.g. +91 9090909090
+
     if (!form.full_name.trim()) return "Full name is required";
     if (!emailRegex.test(form.email)) return "Enter a valid email";
-    if (!/^\d{10}$/.test(form.phone)) return "Enter a valid 10-digit phone number";
-    if (!form.city.trim()) return "City is required";
-    if (form.password.length < 6) return "Password must be at least 6 characters";
+    if (!phoneRegex.test(form.phone))
+      return "Enter phone in format +91 9090909090";
+    if (form.whatsapp && !phoneRegex.test(form.whatsapp))
+      return "Enter WhatsApp number in format +91 9090909090 (or leave blank)";
+    if (!form.country) return "Please select a country";
+    if (!form.state) return "Please select a state";
+    if (!form.district.trim()) return "Please enter your district";
+    if (!form.city.trim()) return "Please enter your city/village";
+    if (form.password.length < 6)
+      return "Password must be at least 6 characters";
+    if (form.password !== form.confirm_password)
+      return "Passwords do not match";
     if (!form.blood_group) return "Please select a blood group";
+    if (!form.authorise)
+      return "You must authorise to display your details";
     return null;
   };
 
@@ -59,14 +97,19 @@ const Register = () => {
         setForm({
           full_name: "",
           email: "",
-          phone: "",
+          country: "",
+          state: "",
+          district: "",
           city: "",
+          phone: "",
+          whatsapp: "",
           password: "",
+          confirm_password: "",
           blood_group: "",
           availability: true,
+          authorise: false,
         });
 
-        // Redirect after short delay (2s)
         setTimeout(() => {
           navigate("/");
         }, 2000);
@@ -79,7 +122,7 @@ const Register = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 border rounded shadow">
+    <div className="max-w-md mx-auto p-6 border rounded shadow bg-white">
       <h1 className="text-2xl font-bold mb-4 text-center">Register</h1>
 
       {/* Messages */}
@@ -96,33 +139,93 @@ const Register = () => {
           className="border p-2 rounded"
           required
         />
+
         <input
           type="email"
           name="email"
-          placeholder="Email"
+          placeholder="Email (Used as User ID)"
           value={form.email}
           onChange={handleChange}
           className="border p-2 rounded"
           required
         />
+
+        {/* Country */}
+        <select
+          name="country"
+          value={form.country}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        >
+          <option value="">Select Country</option>
+          {countries.map((c) => (
+            <option key={c.isoCode} value={c.isoCode}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        {/* State */}
+        <select
+          name="state"
+          value={form.state}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        >
+          <option value="">Select State</option>
+          {states.map((s) => (
+            <option key={s.isoCode} value={s.isoCode}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+
+        {/* District */}
         <input
           type="text"
-          name="phone"
-          placeholder="Phone"
-          value={form.phone}
+          name="district"
+          placeholder="District"
+          value={form.district}
           onChange={handleChange}
           className="border p-2 rounded"
           required
         />
+
+        {/* City/Village */}
         <input
           type="text"
           name="city"
-          placeholder="City"
+          placeholder="City / Village"
           value={form.city}
           onChange={handleChange}
           className="border p-2 rounded"
           required
         />
+
+        {/* Phone */}
+        <input
+          type="text"
+          name="phone"
+          placeholder="Phone Number (e.g. +91 9090909090)"
+          value={form.phone}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        />
+
+        {/* WhatsApp (Optional) */}
+        <input
+          type="text"
+          name="whatsapp"
+          placeholder="WhatsApp Number (Optional)"
+          value={form.whatsapp}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+
+        {/* Password */}
         <input
           type="password"
           name="password"
@@ -133,6 +236,26 @@ const Register = () => {
           required
         />
 
+        {/* Confirm Password */}
+        <input
+          type="password"
+          name="confirm_password"
+          placeholder="Confirm Password"
+          value={form.confirm_password}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        />
+        {form.confirm_password &&
+          form.password !== form.confirm_password && (
+            <p className="text-red-600 text-sm">Passwords do not match</p>
+          )}
+        {form.confirm_password &&
+          form.password === form.confirm_password && (
+            <p className="text-green-600 text-sm">Passwords match ✅</p>
+          )}
+
+        {/* Blood Group */}
         <select
           name="blood_group"
           value={form.blood_group}
@@ -143,10 +266,20 @@ const Register = () => {
           <option value="">Select Blood Group</option>
           <option value="A+">A+</option>
           <option value="A-">A-</option>
+          <option value="A1+">A1+</option>
+          <option value="A1-">A1-</option>
+          <option value="A1B+">A1B+</option>
+          <option value="A1B-">A1B-</option>
+          <option value="A2+">A2+</option>
+          <option value="A2-">A2-</option>
+          <option value="A2B+">A2B+</option>
+          <option value="A2B-">A2B-</option>
           <option value="B+">B+</option>
           <option value="B-">B-</option>
           <option value="AB+">AB+</option>
           <option value="AB-">AB-</option>
+          <option value="Bombay Blood Group">Bombay Blood Group</option>
+          <option value="INRA">INRA</option>
           <option value="O+">O+</option>
           <option value="O-">O-</option>
         </select>
@@ -161,9 +294,27 @@ const Register = () => {
           Available to donate
         </label>
 
+        {/* Authorisation */}
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="authorise"
+            checked={form.authorise}
+            onChange={handleChange}
+          />
+          I authorise this website to display my name and telephone/WhatsApp
+          number, so that the needy could contact me, as and when there is an
+          emergency
+        </label>
+
         <button
           type="submit"
-          className="bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
+          disabled={!form.authorise}
+          className={`${
+            form.authorise
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white py-2 rounded transition`}
         >
           Register
         </button>
