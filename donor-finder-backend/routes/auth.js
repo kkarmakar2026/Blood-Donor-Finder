@@ -1,125 +1,74 @@
 import express from "express";
-import pool from "../db.js"; // PostgreSQL pool
+import pool from "../db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const router = express.Router();
-const JWT_SECRET = "supersecretkey"; // ✅ Replace with env variable in production
+const saltRounds = 10;
 
-// -----------------------
-// REGISTER USER
-// -----------------------
+// REGISTER (works for normal users; admins can also be created here if needed)
 router.post("/register", async (req, res) => {
+  const { full_name, email, phone, whatsapp, country, state, district, city, blood_group, password, role } = req.body;
+  
+  if (!full_name || !email || !phone || !country || !state || !blood_group || !password) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
   try {
-    const { full_name, email, password, phone, city, blood_group } = req.body;
-
-    if (!full_name || !email || !password || !phone || !city || !blood_group) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    // Check if user already exists
-    const userCheck = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (userCheck.rows.length > 0) {
-      return res.status(400).json({ error: "Email already registered" });
-    }
-    
-    // ✅ Check if phone number already exists
-    const phoneCheck = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
-    if (phoneCheck.rows.length > 0) {
-      return res.status(400).json({ error: "Phone number already registered" });
-    }
+    // Check duplicates
+    const e = await pool.query("SELECT 1 FROM users WHERE email=$1", [email]);
+    if (e.rows.length) return res.status(400).json({ error: "Email already exists" });
+    const p = await pool.query("SELECT 1 FROM users WHERE phone=$1", [phone]);
+    if (p.rows.length) return res.status(400).json({ error: "Phone already exists" });
 
     // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashed = await bcrypt.hash(password, saltRounds);
 
-    // Insert into users table
-    const newUserRes = await pool.query(
-      `INSERT INTO users (full_name, email, password, phone, city, blood_group)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [full_name, email, hashedPassword, phone, city, blood_group]
+    const result = await pool.query(
+      `INSERT INTO users (full_name,email,phone,whatsapp,country,state,district,city,blood_group,password,role)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING user_id, full_name, email, role`,
+      [full_name, email, phone, whatsapp || null, country, state, district || null, city || null, blood_group, hashed, role || 'user']
     );
 
-    const newUser = newUserRes.rows[0];
-
-    // Insert into donors table (default availability = true)
-    await pool.query(
-      `INSERT INTO donors (user_id, blood_group, availability, last_donation)
-       VALUES ($1, $2, TRUE, NULL)`,
-      [newUser.user_id, blood_group]
-    );
-
-    res.status(201).json({ message: "User registered successfully", user: newUser });
+    res.status(201).json({ user: result.rows[0], message: "Registered successfully" });
   } catch (err) {
-    console.error("Register error:", err.message);
+    console.error("Register error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// -----------------------
-// LOGIN USER
-// -----------------------
+// LOGIN (works for both users and admins)
 router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+
   try {
-    const { email, password } = req.body;
+    const r = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
+    if (r.rows.length === 0) return res.status(400).json({ error: "Invalid email or password" });
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
+    const user = r.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ error: "Invalid email or password" });
 
-    // Check if user exists
-    const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = userRes.rows[0];
+    // Token secret based on role
+    const isAdmin = user.role === "admin";
+    const token = jwt.sign(
+      { user_id: user.user_id, role: user.role },
+      isAdmin ? process.env.ADMIN_JWT_SECRET : process.env.JWT_SECRET,
+      { expiresIn: "1h" } // changed from 60s to 1 hour
+    );
 
-    if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ user_id: user.user_id }, JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ message: "Login successful", token, user });
+    res.json({
+      token,
+      user: { user_id: user.user_id, full_name: user.full_name, email: user.email, role: user.role }
+    });
   } catch (err) {
-    console.error("Login error:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// -----------------------
-// UPDATE BLOOD GROUP
-// -----------------------
-router.post("/update-blood-group", async (req, res) => {
-  try {
-    const { email, blood_group } = req.body;
-
-    if (!email || !blood_group) {
-      return res.status(400).json({ error: "Email and blood group are required" });
-    }
-
-    // Check if user exists
-    const userCheck = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (userCheck.rows.length === 0) {
-      return res.status(400).json({ error: "User not found" });
-    }
-
-    // Update both users + donors table
-    await pool.query("UPDATE users SET blood_group = $1 WHERE email = $2", [blood_group, email]);
-    await pool.query("UPDATE donors SET blood_group = $1 WHERE user_id = $2", [
-      blood_group,
-      userCheck.rows[0].user_id,
-    ]);
-
-    res.json({ message: "Blood group updated successfully" });
-  } catch (err) {
-    console.error("Update blood group error:", err.message);
+    console.error("Login error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
 export default router;
+

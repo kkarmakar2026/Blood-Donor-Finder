@@ -48,10 +48,10 @@ const Register = () => {
     });
   };
 
-  // ✅ Validation
+  // Validation
   const validateInputs = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+\d{1,4}\s?\d{6,14}$/; // e.g. +91 9090909090
+    const phoneRegex = /^\+\d{1,4}\s?\d{10}$/;
 
     if (!form.full_name.trim()) return "Full name is required";
     if (!emailRegex.test(form.email)) return "Enter a valid email";
@@ -85,10 +85,22 @@ const Register = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
+      const res = await fetch("http://localhost:5000/api/users/register", { // ✅ corrected endpoint
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          full_name: form.full_name,
+          email: form.email,
+          phone: form.phone,
+          whatsapp: form.whatsapp || null, // ✅ send null if empty
+          country: form.country,
+          state: form.state,
+          district: form.district,
+          city: form.city,
+          blood_group: form.blood_group,
+          password: form.password,
+          availability: form.availability,
+        }),
       });
 
       const data = await res.json();
@@ -117,7 +129,9 @@ const Register = () => {
         setError(data.error || "❌ Registration failed");
       }
     } catch (err) {
+      console.error("Register fetch error:", err);
       setError("❌ Server error, please try again later");
+      console.log(err);
     }
   };
 
@@ -130,6 +144,7 @@ const Register = () => {
       {message && <p className="text-green-600 text-center mb-3">{message}</p>}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {/* Full Name */}
         <input
           type="text"
           name="full_name"
@@ -140,6 +155,7 @@ const Register = () => {
           required
         />
 
+        {/* Email */}
         <input
           type="email"
           name="email"
@@ -193,7 +209,7 @@ const Register = () => {
           required
         />
 
-        {/* City/Village */}
+        {/* City */}
         <input
           type="text"
           name="city"
@@ -215,7 +231,7 @@ const Register = () => {
           required
         />
 
-        {/* WhatsApp (Optional) */}
+        {/* WhatsApp */}
         <input
           type="text"
           name="whatsapp"
@@ -284,6 +300,7 @@ const Register = () => {
           <option value="O-">O-</option>
         </select>
 
+        {/* Availability */}
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -303,8 +320,7 @@ const Register = () => {
             onChange={handleChange}
           />
           I authorise this website to display my name and telephone/WhatsApp
-          number, so that the needy could contact me, as and when there is an
-          emergency
+          number for emergencies
         </label>
 
         <button

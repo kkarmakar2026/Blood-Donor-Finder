@@ -1,21 +1,36 @@
-// utils/hashAdmin.js
-import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
+import bcrypt from "bcrypt";
 import pool from "../db.js";
 
-const createAdmin = async () => {
-  const email = "admin@example.com"; // change
-  const password = "admin123";       // change
+dotenv.config();
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+async function createAdmin() {
+  try {
+    const name = process.env.ADMIN_NAME ?? "Admin";
+    const email = process.env.ADMIN_EMAIL ?? "admin@example.com";
+    const plainPassword = process.env.ADMIN_PASSWORD ?? "admin123";
 
-  await pool.query(
-    "INSERT INTO admins (email, password_hash) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING",
-    [email, hashedPassword]
-  );
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
 
-  console.log("✅ Admin created:", email);
-  process.exit(0);
-};
+    const query = `
+      INSERT INTO admins (name, email, password, role)
+      VALUES ($1, $2, $3, 'admin')
+      ON CONFLICT (email)
+      DO UPDATE SET 
+        password = EXCLUDED.password,
+        name = EXCLUDED.name
+      RETURNING admin_id;
+    `;
+
+    const result = await pool.query(query, [name, email, passwordHash]);
+
+    console.log("✅ Admin created/updated:", result.rows[0]);
+    process.exit(0);
+  } catch (err) {
+    console.error("createAdmin error:", err.message);
+    process.exit(1);
+  }
+}
 
 createAdmin();

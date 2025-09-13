@@ -4,24 +4,28 @@ import { Country, State } from "country-state-city";
 const FindDonorForm = () => {
   const [form, setForm] = useState({
     bloodGroup: "",
-    country: "", // Default India (ISO Code)
+    country: "",
     state: "",
-    city: "", // Now will be typed manually
+    district: "",
+    city: "",
   });
 
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
+  const [donors, setDonors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Load all countries on mount
+  // Load countries on mount
   useEffect(() => {
     setCountries(Country.getAllCountries());
   }, []);
 
-  // When country changes → load states
+  // Load states when country changes
   useEffect(() => {
     if (form.country) {
       setStates(State.getStatesOfCountry(form.country));
-      setForm((prev) => ({ ...prev, state: "", city: "" }));
+      setForm((prev) => ({ ...prev, state: "", city: "", district: "" }));
     }
   }, [form.country]);
 
@@ -29,11 +33,30 @@ const FindDonorForm = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(
-      `Searching donors for ${form.bloodGroup} in ${form.city}, ${form.state}, ${form.country}`
-    );
+    setLoading(true);
+    setError("");
+    setDonors([]);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/users/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) throw new Error("Server error");
+
+      const data = await res.json();
+      if (data.length === 0) setError("No donors found matching your criteria.");
+      setDonors(data);
+    } catch (err) {
+      console.error("Search fetch error:", err);
+      setError("❌ Server error, please try again later.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,7 +64,7 @@ const FindDonorForm = () => {
       {/* Form Section */}
       <div className="flex-1 w-full">
         <h2 className="text-2xl font-bold mb-4">FIND BLOOD DONORS</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 mb-6">
           {/* Blood Group */}
           <select
             name="bloodGroup"
@@ -103,11 +126,22 @@ const FindDonorForm = () => {
             ))}
           </select>
 
-          {/* City (manual input instead of dropdown) */}
+          {/* District */}
+          <input
+            type="text"
+            name="district"
+            placeholder="Enter District"
+            value={form.district}
+            onChange={handleChange}
+            className="p-2 rounded text-black"
+            required
+          />
+
+          {/* City */}
           <input
             type="text"
             name="city"
-            placeholder="Enter your city/village"
+            placeholder="Enter City"
             value={form.city}
             onChange={handleChange}
             className="p-2 rounded text-black"
@@ -119,9 +153,40 @@ const FindDonorForm = () => {
             type="submit"
             className="bg-white text-red-600 font-bold px-4 py-2 rounded hover:bg-gray-200"
           >
-            SEARCH
+            {loading ? "Searching..." : "SEARCH"}
           </button>
         </form>
+
+        {/* Error */}
+        {error && <p className="text-yellow-300 mb-3">{error}</p>}
+
+        {/* Donors Table */}
+        {donors.length > 0 && (
+          <table className="min-w-full bg-white text-black rounded shadow">
+            <thead className="bg-red-600 text-white">
+              <tr>
+                <th className="py-2 px-4">Name</th>
+                <th className="py-2 px-4">Blood Group</th>
+                <th className="py-2 px-4">Phone</th>
+                <th className="py-2 px-4">WhatsApp</th>
+                <th className="py-2 px-4">District</th>
+                <th className="py-2 px-4">City</th>
+              </tr>
+            </thead>
+            <tbody>
+              {donors.map((d) => (
+                <tr key={d.user_id} className="border-b">
+                  <td className="py-2 px-4">{d.full_name}</td>
+                  <td className="py-2 px-4">{d.blood_group}</td>
+                  <td className="py-2 px-4">{d.phone}</td>
+                  <td className="py-2 px-4">{d.whatsapp || "-"}</td>
+                  <td className="py-2 px-4">{d.district}</td>
+                  <td className="py-2 px-4">{d.city}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
