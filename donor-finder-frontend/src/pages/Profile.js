@@ -82,6 +82,14 @@ export default function Profile() {
 
   if (!user) return <div className="text-center mt-10">Loading...</div>;
 
+  // ✅ Convert country & state codes to full names
+  const countryName = user.country
+    ? Country.getCountryByCode(user.country)?.name || user.country
+    : "";
+  const stateName = user.state && user.country
+    ? State.getStateByCodeAndCountry(user.state, user.country)?.name || user.state
+    : "";
+
   return (
     <div className="max-w-xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-lg border">
       <h2 className="text-2xl font-bold mb-6 text-center">Your Profile</h2>
@@ -111,11 +119,11 @@ export default function Profile() {
               </tr>
               <tr>
                 <td className="border px-4 py-2 font-semibold">Country</td>
-                <td className="border px-4 py-2">{user.country}</td>
+                <td className="border px-4 py-2">{countryName}</td> {/* ✅ show full name */}
               </tr>
               <tr>
                 <td className="border px-4 py-2 font-semibold">State</td>
-                <td className="border px-4 py-2">{user.state}</td>
+                <td className="border px-4 py-2">{stateName}</td> {/* ✅ show full name */}
               </tr>
               <tr>
                 <td className="border px-4 py-2 font-semibold">District</td>

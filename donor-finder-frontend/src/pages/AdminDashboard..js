@@ -2,16 +2,38 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Country, State } from "country-state-city";
 
+const bloodGroups = [
+  "A+",
+  "A-",
+  "B+",
+  "B-",
+  "O+",
+  "O-",
+  "AB+",
+  "AB-",
+  "A1+",
+  "A1-",
+  "A1B+",
+  "A1B-",
+  "A2+",
+  "A2-",
+  "A2B+",
+  "A2B-",
+  "Bombay Blood Group",
+  "INRA"
+];
+
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     phone: "",
-    whatsapp: "",
+    whatsapp: "" || null,
     country: "",
     state: "",
     district: "",
@@ -21,20 +43,32 @@ const AdminDashboard = () => {
     availability: true,
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  // pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAll, setShowAll] = useState(false);
+  const usersPerPage = 10;
+
+  // confirmation modals
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmUpdate, setConfirmUpdate] = useState(false);
+
   const navigate = useNavigate();
 
   // Helper functions
-const getCountryName = (countryCode) => {
-  if (!countryCode) return "";
-  const country = Country.getCountryByCode(countryCode);
-  return country ? country.name : countryCode;  // only name
-};
+  const getCountryName = (countryCode) => {
+    if (!countryCode) return "";
+    const country = Country.getCountryByCode(countryCode);
+    return country ? country.name : countryCode;
+  };
 
-const getStateName = (countryCode, stateCode) => {
-  if (!countryCode || !stateCode) return "";
-  const state = State.getStateByCodeAndCountry(stateCode, countryCode);
-  return state ? state.name : stateCode;  // only name
-};
+  const getStateName = (countryCode, stateCode) => {
+    if (!countryCode || !stateCode) return "";
+    const state = State.getStateByCodeAndCountry(stateCode, countryCode);
+    return state ? state.name : stateCode;
+  };
 
   // ✅ Fetch all users
   const fetchUsers = useCallback(async () => {
@@ -59,25 +93,65 @@ const getStateName = (countryCode, stateCode) => {
   }, [navigate]);
 
   // ✅ Delete user
-  const deleteUser = async (id) => {
+  const deleteUser = async () => {
+    if (!selectedUser) return;
     const token = localStorage.getItem("adminToken");
-    await fetch(`http://localhost:5000/api/admin/users/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    fetchUsers();
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/admin/users/${selectedUser.user_id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || "Failed to delete user");
+        setConfirmDelete(false);
+        return;
+      }
+
+      setConfirmDelete(false);
+      setSelectedUser(null);
+      setSuccess("Deleted successfully!");
+      await fetchUsers();
+      setTimeout(() => setSuccess(""), 5000);
+
+      // adjust pagination after deletion
+      setTimeout(() => {
+        const filteredLength = users.length - 1;
+        const newTotalPages = Math.max(
+          1,
+          Math.ceil(filteredLength / usersPerPage)
+        );
+        if (currentPage > newTotalPages) setCurrentPage(newTotalPages);
+      }, 100);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete user");
+      setConfirmDelete(false);
+    }
   };
 
-  // ✅ Handle form changes
+  // ✅ Handle form changes (fix availability boolean)
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
+
+    let newValue;
+    if (type === "checkbox") newValue = checked;
+    else if (name === "availability") newValue = value === "true";
+    else newValue = value;
+
+    setForm({ ...form, [name]: newValue });
   };
 
   // ✅ Add or Update User
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     const token = localStorage.getItem("adminToken");
 
     // Phone validation
@@ -126,7 +200,10 @@ const getStateName = (countryCode, stateCode) => {
         availability: true,
       });
       setEditingUser(null);
+      setConfirmUpdate(false);
+      setSuccess("Updated successfully!");
       fetchUsers();
+      setTimeout(() => setSuccess(""), 5000);
     } catch (err) {
       setError("Something went wrong!");
     }
@@ -152,167 +229,66 @@ const getStateName = (countryCode, stateCode) => {
 
   useEffect(() => {
     fetchUsers();
+
+    // ✅ Hide update/delete on outside click
+    const handleClickOutside = (e) => {
+      if (!e.target.closest("tr") && !e.target.closest(".actions-panel")) {
+        setSelectedUser(null);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [fetchUsers]);
+
+  // ✅ Auto logout after 10 minutes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.removeItem("adminToken");
+      setSuccess("");
+      alert("Admin session expired. You will be logged out.");
+      navigate("/admin/login");
+    }, 600000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
+
+  // Filtered users (search)
+  const filteredUsers = users.filter((u) =>
+    u.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination logic
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = showAll
+    ? filteredUsers
+    : filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
 
-      {/* Error */}
+      {/* Error / Success */}
       {error && <p className="text-red-600 mb-2">{error}</p>}
+      {success && <p className="text-green-600 mb-2">{success}</p>}
 
-      {/* Add/Edit User Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="mb-6 grid grid-cols-2 gap-3 bg-gray-100 p-4 rounded-lg"
-      >
+      {/* Search */}
+      <div className="mb-4 flex gap-2">
         <input
           type="text"
-          name="full_name"
-          placeholder="Full Name"
-          value={form.full_name}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
+          placeholder="Search user by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border p-2 rounded w-1/3"
         />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        />
-        <input
-          type="text"
-          name="phone"
-          placeholder="+91 9090909090"
-          value={form.phone}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        />
-        <input
-          type="text"
-          name="whatsapp"
-          placeholder="+91 9090909090 (optional)"
-          value={form.whatsapp}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-
-        {/* Country */}
-        <select
-          name="country"
-          value={form.country}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        >
-          <option value="">Select Country</option>
-          {Country.getAllCountries().map((c) => (
-            <option key={c.isoCode} value={c.isoCode}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        {/* State */}
-        <select
-          name="state"
-          value={form.state}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        >
-          <option value="">Select State</option>
-          {State.getStatesOfCountry(form.country).map((s) => (
-            <option key={s.isoCode} value={s.isoCode}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          name="district"
-          placeholder="District"
-          value={form.district}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        />
-        <input
-          type="text"
-          name="city"
-          placeholder="City / Village"
-          value={form.city}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        />
-
-        {/* Blood Group */}
-        <select
-          name="blood_group"
-          value={form.blood_group}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          required
-        >
-          <option value="">Blood Group</option>
-          <option value="A+">A+</option>
-          <option value="A-">A-</option>
-          <option value="A1+">A1+</option>
-          <option value="A1-">A1-</option>
-          <option value="A1B+">A1B+</option>
-          <option value="A1B-">A1B-</option>
-          <option value="A2+">A2+</option>
-          <option value="A2-">A2-</option>
-          <option value="A2B+">A2B+</option>
-          <option value="A2B-">A2B-</option>
-          <option value="B+">B+</option>
-          <option value="B-">B-</option>
-          <option value="AB+">AB+</option>
-          <option value="AB-">AB-</option>
-          <option value="Bombay Blood Group">Bombay Blood Group</option>
-          <option value="INRA">INRA</option>
-          <option value="O+">O+</option>
-          <option value="O-">O-</option>
-        </select>
-
-        {/* Availability */}
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="availability"
-            checked={form.availability}
-            onChange={handleChange}
-          />
-          Available
-        </label>
-
-        {/* Password (only for new user) */}
-        {!editingUser && (
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
-        )}
-
         <button
-          type="submit"
-          className="col-span-2 bg-green-600 text-white px-4 py-2 rounded"
+          onClick={() => setShowAll(!showAll)}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          {editingUser ? "Update User" : "Add User"}
+          {"Show All"}
         </button>
-      </form>
+      </div>
 
       {/* Users Table */}
       <table className="w-full border text-sm">
@@ -321,48 +297,257 @@ const getStateName = (countryCode, stateCode) => {
             <th className="p-2 border">Name</th>
             <th className="p-2 border">Email</th>
             <th className="p-2 border">Phone</th>
-            <th className="p-2 border">WhatsApp</th>
             <th className="p-2 border">Country</th>
             <th className="p-2 border">State</th>
-            <th className="p-2 border">District</th>
             <th className="p-2 border">City</th>
             <th className="p-2 border">Blood Group</th>
             <th className="p-2 border">Availability</th>
-            <th className="p-2 border">Actions</th>
           </tr>
         </thead>
         <tbody>
-  {users.map((u) => (
-    <tr key={u.user_id}>
-      <td className="border p-2">{u.full_name}</td>
-      <td className="border p-2">{u.email}</td>
-      <td className="border p-2">{u.phone}</td>
-      <td className="border p-2">{u.whatsapp || "-"}</td>
-      <td className="border p-2">{getCountryName(u.country)}</td>
-      <td className="border p-2">{getStateName(u.country, u.state)}</td>
-      <td className="border p-2">{u.district}</td>
-      <td className="border p-2">{u.city}</td>
-      <td className="border p-2">{u.blood_group}</td>
-      <td className="border p-2">{u.availability ? "Available" : "Not Availabe"}</td>
-      <td className="border p-2 space-x-2">
-        <button
-          onClick={() => editUser(u)}
-          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => deleteUser(u.user_id)}
-          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+          {currentUsers.map((u) => (
+            <tr
+              key={u.user_id}
+              className={`cursor-pointer ${
+                selectedUser?.user_id === u.user_id ? "bg-gray-200" : ""
+              }`}
+              onClick={() => setSelectedUser(u)}
+            >
+              <td className="border p-2">{u.full_name}</td>
+              <td className="border p-2">{u.email}</td>
+              <td className="border p-2">{u.phone}</td>
+              <td className="border p-2">{getCountryName(u.country)}</td>
+              <td className="border p-2">{getStateName(u.country, u.state)}</td>
+              <td className="border p-2">{u.city}</td>
+              <td className="border p-2">{u.blood_group}</td>
+              <td className="border p-2">
+                {u.availability ? "Available" : "Not Available"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
+
+      {/* Pagination (bottom-right) */}
+      {!showAll && totalPages >= 1 && (
+        <div className="flex justify-end items-center gap-2 mt-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Prev
+          </button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => {
+              const pageNum = i + 1;
+              if (
+                totalPages <= 7 ||
+                Math.abs(pageNum - currentPage) <= 2 ||
+                pageNum === 1 ||
+                pageNum === totalPages
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 rounded ${
+                      currentPage === pageNum
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              }
+              return null;
+            })}
+          </div>
+
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Actions */}
+      {selectedUser && (
+        <div className="mt-4 flex gap-4 actions-panel">
+          <button
+            onClick={() => {
+              editUser(selectedUser);
+              setConfirmUpdate(true);
+            }}
+            className="bg-yellow-500 text-white px-4 py-2 rounded"
+          >
+            Update
+          </button>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Delete
+          </button>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 rounded shadow-md space-y-4">
+            <h3 className="font-bold text-lg">Confirm Delete</h3>
+            <p>Are you sure you want to delete {selectedUser.full_name}?</p>
+            <div className="flex gap-4">
+              <button
+                onClick={deleteUser}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Update Modal */}
+      {confirmUpdate && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 rounded shadow-md w-1/2">
+            <h3 className="font-bold text-lg mb-4">Update User</h3>
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                name="full_name"
+                value={form.full_name}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="whatsapp"
+                value={form.whatsapp}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="district"
+                value={form.district}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+
+              {/* ✅ Country Dropdown */}
+              <select
+                name="country"
+                value={form.country}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value="">Select Country</option>
+                {Country.getAllCountries().map((c) => (
+                  <option key={c.isoCode} value={c.isoCode}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* ✅ State Dropdown */}
+              <select
+                name="state"
+                value={form.state}
+                onChange={handleChange}
+                className="border p-2 rounded"
+                disabled={!form.country}
+              >
+                <option value="">Select State</option>
+                {State.getStatesOfCountry(form.country).map((s) => (
+                  <option key={s.isoCode} value={s.isoCode}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* ✅ Blood Group Dropdown */}
+              <select
+                name="blood_group"
+                value={form.blood_group}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value="">Select Blood Group</option>
+                {bloodGroups.map((bg) => (
+                  <option key={bg} value={bg}>
+                    {bg}
+                  </option>
+                ))}
+              </select>
+
+              {/* ✅ Availability Dropdown */}
+              <select
+                name="availability"
+                value={form.availability}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value={true}>Available</option>
+                <option value={false}>Not Available</option>
+              </select>
+
+              <div className="col-span-2 flex gap-4 mt-4">
+                <button
+                  type="submit"
+                  className="bg-green-600 text-white px-4 py-2 rounded"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmUpdate(false)}
+                  className="bg-gray-400 text-white px-4 py-2 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

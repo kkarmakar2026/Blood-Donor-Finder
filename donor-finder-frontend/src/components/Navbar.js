@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react"; // hamburger + close icons
 import logo from "../assets/LifeConnect Logo.png";
 
-
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -37,7 +36,6 @@ const Navbar = () => {
           {/* Desktop Links */}
           <div className="hidden md:flex space-x-8 text-lg font-semibold">
             <Link to="/" className="hover:underline">Home</Link>
-            <Link to="/contact" className="hover:underline">Contact</Link>
 
             {user ? (
               <>
@@ -56,6 +54,7 @@ const Navbar = () => {
             <Link to="/admin/login" className="hover:underline font-bold">
               Admin Login
             </Link>
+            <Link to="/contact" className="hover:underline">Contact</Link>
           </div>
 
           {/* Mobile Hamburger Button */}
@@ -74,8 +73,6 @@ const Navbar = () => {
       {isOpen && (
         <div className="md:hidden bg-red-700 px-4 py-3 space-y-2 text-lg font-semibold">
           <Link to="/" className="block hover:underline" onClick={() => setIsOpen(false)}>Home</Link>
-          <Link to="/donors" className="block hover:underline" onClick={() => setIsOpen(false)}>Find Donors</Link>
-          <Link to="/contact" className="block hover:underline" onClick={() => setIsOpen(false)}>Contact</Link>
 
           {user ? (
             <>
@@ -101,6 +98,7 @@ const Navbar = () => {
           >
             Admin Login
           </Link>
+          <Link to="/contact" className="block hover:underline" onClick={() => setIsOpen(false)}>Contact</Link>
         </div>
       )}
     </nav>
