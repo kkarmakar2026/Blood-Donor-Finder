@@ -327,7 +327,7 @@ const getStateName = (countryCode, stateCode) => {
             <th className="p-2 border">District</th>
             <th className="p-2 border">City</th>
             <th className="p-2 border">Blood Group</th>
-            <th className="p-2 border">Available</th>
+            <th className="p-2 border">Availability</th>
             <th className="p-2 border">Actions</th>
           </tr>
         </thead>
@@ -343,7 +343,7 @@ const getStateName = (countryCode, stateCode) => {
       <td className="border p-2">{u.district}</td>
       <td className="border p-2">{u.city}</td>
       <td className="border p-2">{u.blood_group}</td>
-      <td className="border p-2">{u.availability ? "✅" : "❌"}</td>
+      <td className="border p-2">{u.availability ? "Available" : "Not Availabe"}</td>
       <td className="border p-2 space-x-2">
         <button
           onClick={() => editUser(u)}

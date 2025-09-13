@@ -3,7 +3,7 @@ import { Country, State } from "country-state-city";
 
 const FindDonorForm = () => {
   const [form, setForm] = useState({
-    bloodGroup: "",
+    blood_group: "",
     country: "",
     state: "",
     district: "",
@@ -67,8 +67,8 @@ const FindDonorForm = () => {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 mb-6">
           {/* Blood Group */}
           <select
-            name="bloodGroup"
-            value={form.bloodGroup}
+            name="blood_group"
+            value={form.blood_group}
             onChange={handleChange}
             className="p-2 rounded text-black"
             required
@@ -102,7 +102,7 @@ const FindDonorForm = () => {
             className="p-2 rounded text-black"
             required
           >
-            <option value="">--Select Country--</option>
+            <option value="">Select Country</option>
             {countries.map((c) => (
               <option key={c.isoCode} value={c.isoCode}>
                 {c.name}
@@ -118,7 +118,7 @@ const FindDonorForm = () => {
             className="p-2 rounded text-black"
             required
           >
-            <option value="">--Select State--</option>
+            <option value="">Select State</option>
             {states.map((s) => (
               <option key={s.isoCode} value={s.isoCode}>
                 {s.name}
@@ -141,7 +141,7 @@ const FindDonorForm = () => {
           <input
             type="text"
             name="city"
-            placeholder="Enter City"
+            placeholder="Enter City/Village"
             value={form.city}
             onChange={handleChange}
             className="p-2 rounded text-black"

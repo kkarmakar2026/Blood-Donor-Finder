@@ -135,18 +135,18 @@ router.post("/search", async (req, res) => {
     const result = await pool.query(
       `SELECT user_id, full_name, blood_group, phone, whatsapp, district, city, state, country
        FROM users 
-       WHERE blood_group ILIKE $1
-         AND country ILIKE $2
-         AND state ILIKE $3
-         AND district ILIKE $4
-         AND city ILIKE $5
+       WHERE ($1::text IS NULL OR blood_group = $1) 
+         AND ($2::text IS NULL OR country = $2)
+         AND ($3::text IS NULL OR state = $3)
+         AND ($4::text IS NULL OR district = $4)
+         AND ($5::text IS NULL OR city = $5)
          AND role='user'`,
       [
-        blood_group?.trim() || "%",
-        country?.trim() || "%",
-        state?.trim() || "%",
-        district?.trim() || "%",
-        city?.trim() || "%",
+        blood_group?.trim() || null,
+        country?.trim() || null,
+        state?.trim() || null,
+        district?.trim() || null,
+        city?.trim() || null,
       ]
     );
 
@@ -156,5 +156,6 @@ router.post("/search", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 export default router;
