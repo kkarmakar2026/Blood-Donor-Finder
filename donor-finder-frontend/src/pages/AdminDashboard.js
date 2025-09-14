@@ -20,7 +20,7 @@ const bloodGroups = [
   "A2B+",
   "A2B-",
   "Bombay Blood Group",
-  "INRA"
+  "INRA",
 ];
 
 const AdminDashboard = () => {
@@ -56,6 +56,47 @@ const AdminDashboard = () => {
   const [confirmUpdate, setConfirmUpdate] = useState(false);
 
   const navigate = useNavigate();
+
+  // drag states
+  const [dragging, setDragging] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  // ✅ Drag handlers
+  const handleMouseDown = (e) => {
+    setDragging(true);
+    setOffset({
+      x: e.clientX - popupPosition.x,
+      y: e.clientY - popupPosition.y,
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (dragging) {
+      setPopupPosition({
+        x: e.clientX - offset.x,
+        y: e.clientY - offset.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragging(false);
+  };
+
+  useEffect(() => {
+    if (dragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    } else {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragging]);
 
   // Helper functions
   const getCountryName = (countryCode) => {
@@ -400,154 +441,186 @@ const AdminDashboard = () => {
       )}
 
       {/* Confirm Delete Modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 rounded shadow-md space-y-4">
-            <h3 className="font-bold text-lg">Confirm Delete</h3>
-            <p>Are you sure you want to delete {selectedUser.full_name}?</p>
-            <div className="flex gap-4">
-              <button
-                onClick={deleteUser}
-                className="bg-red-600 text-white px-4 py-2 rounded"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="bg-gray-400 text-white px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+{confirmDelete && selectedUser && (
+  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+    <div
+      className="bg-white p-6 rounded shadow-md space-y-4 relative"
+      style={{
+        transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
+      }}
+    >
+      {/* draggable header */}
+      <div
+        className="flex justify-between items-center cursor-move"
+        onMouseDown={handleMouseDown}
+      >
+        <h3 className="font-bold text-lg">Confirm Delete</h3>
+        <button
+          onClick={() => setConfirmDelete(false)}
+          className="text-gray-600 font-bold text-lg"
+        >
+          ✕
+        </button>
+      </div>
+      <p>Are you sure you want to delete {selectedUser?.full_name}?</p>
+      <div className="col-span-2 flex gap-4 mt-4 justify-start">
+        <button
+          onClick={deleteUser}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Delete
+        </button>
+        <button
+          onClick={() => setConfirmDelete(false)}
+          className="bg-gray-400 text-white px-4 py-2 rounded"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-      {/* Confirm Update Modal */}
-      {confirmUpdate && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 rounded shadow-md w-1/2">
-            <h3 className="font-bold text-lg mb-4">Update User</h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-              <input
-                type="text"
-                name="full_name"
-                value={form.full_name}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
-              <input
-                type="text"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
-              <input
-                type="text"
-                name="whatsapp"
-                value={form.whatsapp}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
-              <input
-                type="text"
-                name="district"
-                value={form.district}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
-              <input
-                type="text"
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              />
+{/* Confirm Update Modal */}
+{confirmUpdate && selectedUser && (
+  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+    <div
+      className="bg-white p-6 rounded shadow-md w-1/2 relative"
+      style={{
+        transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
+      }}
+    >
+      {/* draggable header */}
+      <div
+        className="flex justify-between items-center cursor-move mb-4"
+        onMouseDown={handleMouseDown}
+      >
+        <h3 className="font-bold text-lg">Update User</h3>
+        <button
+          onClick={() => setConfirmUpdate(false)}
+          className="text-gray-600 font-bold text-lg"
+        >
+          ✕
+        </button>
+      </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+        <input
+          type="text"
+          name="full_name"
+          value={form.full_name}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <input
+          type="email"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          name="phone"
+          value={form.phone}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          name="whatsapp"
+          value={form.whatsapp}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          name="district"
+          value={form.district}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          name="city"
+          value={form.city}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
 
-              {/* ✅ Country Dropdown */}
-              <select
-                name="country"
-                value={form.country}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              >
-                <option value="">Select Country</option>
-                {Country.getAllCountries().map((c) => (
-                  <option key={c.isoCode} value={c.isoCode}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+        {/* Country Dropdown */}
+        <select
+          name="country"
+          value={form.country}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        >
+          <option value="">Select Country</option>
+          {Country.getAllCountries().map((c) => (
+            <option key={c.isoCode} value={c.isoCode}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-              {/* ✅ State Dropdown */}
-              <select
-                name="state"
-                value={form.state}
-                onChange={handleChange}
-                className="border p-2 rounded"
-                disabled={!form.country}
-              >
-                <option value="">Select State</option>
-                {State.getStatesOfCountry(form.country).map((s) => (
-                  <option key={s.isoCode} value={s.isoCode}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+        {/* State Dropdown */}
+        <select
+          name="state"
+          value={form.state}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          disabled={!form.country}
+        >
+          <option value="">Select State</option>
+          {State.getStatesOfCountry(form.country).map((s) => (
+            <option key={s.isoCode} value={s.isoCode}>
+              {s.name}
+            </option>
+          ))}
+        </select>
 
-              {/* ✅ Blood Group Dropdown */}
-              <select
-                name="blood_group"
-                value={form.blood_group}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              >
-                <option value="">Select Blood Group</option>
-                {bloodGroups.map((bg) => (
-                  <option key={bg} value={bg}>
-                    {bg}
-                  </option>
-                ))}
-              </select>
+        {/* Blood Group Dropdown */}
+        <select
+          name="blood_group"
+          value={form.blood_group}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        >
+          <option value="">Select Blood Group</option>
+          {bloodGroups.map((bg, idx) => (
+            <option key={idx} value={bg}>
+              {bg}
+            </option>
+          ))}
+        </select>
 
-              {/* ✅ Availability Dropdown */}
-              <select
-                name="availability"
-                value={form.availability}
-                onChange={handleChange}
-                className="border p-2 rounded"
-              >
-                <option value={true}>Available</option>
-                <option value={false}>Not Available</option>
-              </select>
+        {/* Availability Dropdown */}
+        <select
+          name="availability"
+          value={form.availability ? "true" : "false"}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        >
+          <option value="true">Available</option>
+          <option value="false">Not Available</option>
+        </select>
 
-              <div className="col-span-2 flex gap-4 mt-4">
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white px-4 py-2 rounded"
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmUpdate(false)}
-                  className="bg-gray-400 text-white px-4 py-2 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        <button
+          type="submit"
+          className="bg-green-600 text-white px-4 py-2 rounded col-span-1"
+        >
+          Save
+        </button>
+        <button
+          onClick={() => setConfirmDelete(false)}
+          className="bg-gray-400 text-white px-4 py-2 rounded"
+        >
+          Cancel
+        </button>
+      </form>
+    </div>
+  </div>
+   )}
+
     </div>
   );
 };

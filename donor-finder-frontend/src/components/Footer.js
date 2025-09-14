@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
-    <footer className="bg-white border-t mt-8">
+    <footer className>
       <div className="container mx-auto py-6 text-center text-sm text-gray-600">
 
        {/* FOLLOW + CONTACT in one row */}
@@ -91,7 +91,7 @@ export function Footer() {
         {/* Footer Note */}
         <p>
           © 2025, All Rights Reserved. Site Designed & Maintained By{" "}
-          <span className="font-semibold">LifeConnect.org</span>
+          <span className="font-semibold">LifeConnect</span>
         </p>
       </div>
     </footer>

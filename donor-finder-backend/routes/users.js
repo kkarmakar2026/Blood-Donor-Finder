@@ -29,7 +29,7 @@ router.post("/register", async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    
     const result = await pool.query(
       `INSERT INTO users
        (full_name, email, phone, whatsapp, country, state, district, city, blood_group, password, availability, role)
@@ -113,7 +113,7 @@ router.put("/profile", authMiddleware, async (req, res) => {
        RETURNING user_id, full_name, email, phone, whatsapp, country, state, district, city, blood_group, availability`,
       [
         full_name, email, phone, whatsapp || null,
-        country, state, district || null, city || null,
+        country, state, district , city,
         blood_group, availability ?? true, userId
       ]
     );
@@ -133,14 +133,15 @@ router.post("/search", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT user_id, full_name, blood_group, phone, whatsapp, district, city, state, country
+      `SELECT user_id, full_name, blood_group, phone, whatsapp, district, city, availability
        FROM users 
        WHERE ($1::text IS NULL OR blood_group = $1) 
          AND ($2::text IS NULL OR country = $2)
          AND ($3::text IS NULL OR state = $3)
          AND ($4::text IS NULL OR district = $4)
          AND ($5::text IS NULL OR city = $5)
-         AND role='user'`,
+         AND role='user'
+         ORDER BY availability DESC, full_name ASC`,
       [
         blood_group?.trim() || null,
         country?.trim() || null,
@@ -156,6 +157,7 @@ router.post("/search", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 export default router;

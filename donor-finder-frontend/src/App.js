@@ -9,7 +9,7 @@ import Login from "./pages/Login";
 import Donors from "./pages/Donors";
 import Contact from "./pages/Contact";
 import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard.";
+import AdminDashboard from "./pages/AdminDashboard";
 import Profile from "./pages/Profile";   // ✅ Import Profile page
 
 function App() {
