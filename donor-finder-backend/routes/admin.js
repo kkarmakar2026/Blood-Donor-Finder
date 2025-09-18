@@ -74,65 +74,6 @@ router.get("/users", verifyAdminToken, async (req, res) => {
   }
 });
 
-// ===========================
-//  Admin Add New User
-// ===========================
-router.post("/users", verifyAdminToken, async (req, res) => {
-  const {
-    full_name,
-    email,
-    phone,
-    whatsapp,
-    country,
-    state,
-    district,
-    city,
-    blood_group,
-    password,
-    availability,
-  } = req.body;
-
-  if (!full_name || !email || !phone || !country || !state || !blood_group || !password) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `INSERT INTO users 
-       (full_name, email, phone, whatsapp, country, state, district, city, blood_group, password, availability, role) 
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'user') 
-       RETURNING *`,
-      [
-        full_name,
-        email,
-        phone,
-        whatsapp || null,
-        country,
-        state,
-        district,
-        city,
-        blood_group,
-        hashedPassword,
-        availability ?? true,
-      ]
-    );
-
-    return res.status(201).json({
-      message: "User added successfully",
-      user: result.rows[0],
-    });
-  } catch (err) {
-    console.error("Add user error:", err);
-
-    if (err.code === "23505") {
-      return res.status(400).json({ error: "Email or phone number already exists" });
-    }
-
-    return res.status(500).json({ error: "Failed to add user" });
-  }
-});
 
 // ===========================
 //  Admin Update User
@@ -246,27 +187,45 @@ router.post("/reports", async (req, res) => {
 // ===========================
 // Admin Get Pending Reports + Search
 // ===========================
+// Get all pending reports (with pagination + search)
 router.get("/reports", verifyAdminToken, async (req, res) => {
-  const { search } = req.query;
-
   try {
-    const result = await pool.query(
-      `SELECT r.report_id, r.reason, r.description, r.reported_at, r.status,
-              u.full_name, u.blood_group, u.phone, u.city, u.district
-       FROM donor_reports r
-       JOIN users u ON r.donor_id = u.user_id
-       WHERE r.status = 'pending'
-         AND ($1::text IS NULL OR LOWER(u.full_name) LIKE LOWER('%' || $1 || '%'))
-       ORDER BY r.reported_at DESC`,
-      [search?.trim() || null]
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const offset = (page - 1) * limit;
+
+    // count total
+    const countResult = await pool.query(
+      `SELECT COUNT(*) 
+       FROM donor_reports dr
+       JOIN users u ON dr.donor_id = u.user_id
+       WHERE u.full_name ILIKE $1 OR dr.reason ILIKE $1`,
+      [`%${search}%`]
     );
 
-    res.json(result.rows);
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    // fetch records
+    const result = await pool.query(
+      `SELECT dr.report_id, dr.donor_id, dr.reason, dr.description, dr.reported_at,
+              u.full_name, u.email, u.phone
+       FROM donor_reports dr
+       JOIN users u ON dr.donor_id = u.user_id
+       WHERE u.full_name ILIKE $1 OR dr.reason ILIKE $1
+       ORDER BY dr.reported_at DESC
+       LIMIT $2 OFFSET $3`,
+      [`%${search}%`, limit, offset]
+    );
+
+    res.json({
+      reports: result.rows,
+      total,
+    });
   } catch (err) {
     console.error("Fetch reports error:", err.message);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while fetching reports" });
   }
 });
+
 
 // ===========================
 // Feedback Routes
@@ -359,6 +318,7 @@ router.delete("/feedback/:id", verifyAdminToken, async (req, res) => {
 // Resolve a report (move to resolved_reports and delete from reports)
 router.put("/reports/:id/resolve", verifyAdminToken, async (req, res) => {
   const { id } = req.params;
+  const{resolution_notes} = req.body;
 
   try {
     // 1. Fetch report details
@@ -375,14 +335,15 @@ router.put("/reports/:id/resolve", verifyAdminToken, async (req, res) => {
 
     // 2. Insert into resolved_reports
     await pool.query(
-      `INSERT INTO resolved_reports (report_id, donor_id, reason, description, reported_at)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO resolved_reports (report_id, donor_id, reason, description, reported_at,resolution_notes)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         report.report_id,
         report.donor_id,
         report.reason,
         report.description,
         report.reported_at,
+        resolution_notes || null,
       ]
     );
 
@@ -395,6 +356,29 @@ router.put("/reports/:id/resolve", verifyAdminToken, async (req, res) => {
     res.status(500).json({ error: "Server error while resolving report" });
   }
 });
+
+// Fetch resolved_reports
+router.get("/resolved_reports", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT rr.resolved_id, rr.report_id, rr.reason, rr.description, rr.reported_at, rr.resolved_at, u.full_name,u.email,u.phone
+       FROM resolved_reports rr
+       JOIN users u ON rr.donor_id = u.user_id
+       ORDER BY rr.resolved_at DESC`
+    );
+
+    res.json({
+      reports: result.rows,
+      total: result.rows.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch resolved reports" });
+  }
+});
+
+
+
 
 
 

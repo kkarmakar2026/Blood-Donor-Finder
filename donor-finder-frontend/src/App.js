@@ -16,6 +16,9 @@ import FAQs from "./pages/FAQs";
 import FeedbackForm from "./pages/FeedbackForm";
 import AdminReports from "./pages/AdminReport";
 import AdminFeedbackReview from "./pages/AdminFeedbackReview";
+import ResolvedReport from "./pages/ResolvedReport";
+import AdminReportPreview from "./pages/AdminReportPreview";
+
 
 function App() {
   return (
@@ -32,6 +35,8 @@ function App() {
         <Route path="/feedback" element={<FeedbackForm/>} />
         <Route path="/admin/feedback" element={<AdminReports />} />
         <Route path="/admin/feedback-review" element={<AdminFeedbackReview />} />
+        <Route path="/admin/resolved-reports" element={<ResolvedReport />} />
+        <Route path="/admin/reports" element={<AdminReportPreview />} />
 
 
         {/* Admin */}

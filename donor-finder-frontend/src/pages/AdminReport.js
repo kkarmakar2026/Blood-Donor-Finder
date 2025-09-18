@@ -172,13 +172,13 @@ const AdminReports = () => {
               required
             >
               <option value="">Select reason</option>
-              <option value="wrong number">Wrong Number</option>
-              <option value="phone no using someone else">Phone No Using Someone Else</option>
-              <option value="donors location changed">Donor's Location Changed</option>
-              <option value="donated recently">Donated Recently</option>
-              <option value="can't donate anymore">Can't Donate Anymore</option>
-              <option value="denied to donate">Denied to Donate</option>
-              <option value="spam">Report As Spam</option>
+              <option value="Wrong number">Wrong Number</option>
+              <option value="Phone no using someone else">Phone No Using Someone Else</option>
+              <option value="Donors location changed">Donor's Location Changed</option>
+              <option value="Donated recently">Donated Recently</option>
+              <option value="Can't donate anymore">Can't Donate Anymore</option>
+              <option value="Denied to donate">Denied to Donate</option>
+              <option value="Spam">Report As Spam</option>
             </select>
           </div>
 

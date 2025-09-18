@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef} from "react";
 import { useNavigate } from "react-router-dom";
 import { Country, State } from "country-state-city";
 
@@ -24,6 +24,8 @@ const bloodGroups = [
 ];
 
 const AdminDashboard = () => {
+  
+  const tableRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [error, setError] = useState("");
@@ -45,6 +47,7 @@ const AdminDashboard = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
+  
 
   // pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +86,20 @@ const AdminDashboard = () => {
   const handleMouseUp = () => {
     setDragging(false);
   };
+
+    useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tableRef.current && !tableRef.current.contains(event.target)) {
+        setSelectedUser(null); // deselect user
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
 
   useEffect(() => {
     if (dragging) {
@@ -268,59 +285,6 @@ const AdminDashboard = () => {
     });
   };
 
-  // ✅ Reports states & fetch
-  const [showReports, setShowReports] = useState(false);
-  const [reports, setReports] = useState([]);
-  const [reportSearch, setReportSearch] = useState("");
-
-  const fetchReports = useCallback(async () => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) return;
-
-    try {
-      const res = await fetch("http://localhost:5000/api/admin/reports", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReports(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch reports:", err);
-    }
-  }, []);
-
-  const resolveReport = async (reportId) => {
-    const token = localStorage.getItem("adminToken");
-    try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/reports/${reportId}/resolve`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.ok) {
-        setReports((prev) => prev.filter((r) => r.report_id !== reportId));
-        alert("Report resolved successfully!");
-      }
-    } catch (err) {
-      console.error("Failed to resolve report:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-
-    const handleClickOutside = (e) => {
-      if (!e.target.closest("tr") && !e.target.closest(".actions-panel")) {
-        setSelectedUser(null);
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [fetchUsers]);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       localStorage.removeItem("adminToken");
@@ -343,31 +307,46 @@ const AdminDashboard = () => {
 
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+  
 
+  useEffect(() => {
+  fetchUsers();
+}, [fetchUsers]);
+
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Admin Dashboard</h1>
+     <div className="flex gap-3 mb-6">
       <button
         onClick={() => navigate("/admin/feedback-review")}
-        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow-md transition"
       >
         Feedback Review
       </button>
 
-      {/* ✅ View Reports Button */}
+      
+      {/* ✅ Button to go to Pending Reports */}
       <button
-        onClick={() => {
-          setShowReports(true);
-          fetchReports();
-        }}
-        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 ml-2"
+        onClick={() => navigate("/admin/reports")}
+        className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded shadow-md transition"
       >
-        View Reports
+        View Pending Reports
+      </button>
+
+      <button
+        onClick={() => navigate("/admin/resolved-reports")}
+
+      
+        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded shadow-md transition"
+      >
+        View Resolved Reports
       </button>
 
       {/* Error / Success */}
       {error && <p className="text-red-600 mb-2">{error}</p>}
       {success && <p className="text-green-600 mb-2">{success}</p>}
+      </div>
 
       {/* Search */}
       <div className="mb-4 flex gap-2">
@@ -375,36 +354,38 @@ const AdminDashboard = () => {
           type="text"
           placeholder="Search user by name..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border p-2 rounded w-1/3"
+          onChange={(e) => setSearchQuery(e.target.value)} className="border p-2 rounded shadow-sm flex-8 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          
         />
         <button
           onClick={() => setShowAll(!showAll)}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-md transition"
         >
           {"Show All"}
         </button>
+        
       </div>
 
       {/* Users Table */}
-      <table className="w-full border text-sm">
+      <div className="overflow-x-auto rounded shadow-md " ref={tableRef}>
+      <table className="w-full border text-sm bg-white">
         <thead>
-          <tr className="bg-red-500 text-white">
-            <th className="p-2 border">Name</th>
-            <th className="p-2 border">Email</th>
-            <th className="p-2 border">Phone</th>
-            <th className="p-2 border">Country</th>
-            <th className="p-2 border">State</th>
-            <th className="p-2 border">City</th>
-            <th className="p-2 border">Blood Group</th>
-            <th className="p-2 border">Availability</th>
+          <tr className="bg-red-500 text-white text-center">
+            <th className="p-3 border">Name</th>
+            <th className="p-3 border">Email</th>
+            <th className="p-3 border">Phone</th>
+            <th className="p-3 border">Country</th>
+            <th className="p-3 border">State</th>
+            <th className="p-3 border">City</th>
+            <th className="p-3 border">Blood Group</th>
+            <th className="p-3 border">Availability</th>
           </tr>
         </thead>
         <tbody>
           {currentUsers.map((u) => (
             <tr
               key={u.user_id}
-              className={`cursor-pointer ${
+              className={`cursor-pointer:bg-gray-100 transition ${
                 selectedUser?.user_id === u.user_id ? "bg-gray-200" : ""
               }`}
               onClick={() => setSelectedUser(u)}
@@ -423,6 +404,7 @@ const AdminDashboard = () => {
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* Pagination (bottom-right) */}
       {!showAll && totalPages >= 1 && (
@@ -476,7 +458,7 @@ const AdminDashboard = () => {
 
       {/* Actions */}
       {selectedUser && (
-        <div className="mt-4 flex gap-4 actions-panel">
+        <div className="mt-0 flex gap-4 actions-panel">
           <button
             onClick={() => {
               editUser(selectedUser);
@@ -670,70 +652,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* ✅ Reports Table */}
-      {showReports && (
-        <div className="mt-6">
-          <h2 className="text-xl font-bold mb-2">Pending Donor Reports</h2>
-
-          <input
-            type="text"
-            placeholder="Search by donor name..."
-            value={reportSearch}
-            onChange={(e) => setReportSearch(e.target.value)}
-            className="border p-2 rounded mb-2 w-1/3"
-          />
-
-          <table className="w-full border text-sm">
-            <thead>
-              <tr className="bg-red-500 text-white">
-                <th className="p-2 border">Donor Name</th>
-                <th className="p-2 border">Reason</th>
-                <th className="p-2 border">Description</th>
-                <th className="p-2 border">Reported At</th>
-                <th className="p-2 border">Status</th>
-                <th className="p-2 border">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports
-                .filter((r) =>
-                  r.full_name.toLowerCase().includes(reportSearch.toLowerCase())
-                )
-                .map((r) => (
-                  <tr key={r.report_id}>
-                    <td className="border p-2">{r.full_name}</td>
-                    <td className="border p-2">{r.reason}</td>
-                    <td className="border p-2">{r.description}</td>
-                    <td className="border p-2">
-                      {new Date(r.reported_at).toLocaleString()}
-                    </td>
-                    <td className="border p-2">
-  <span
-    className={`font-bold ${
-      (r.status || "pending").toLowerCase() === "pending"
-        ? "text-red-600"
-        : "text-green-600"
-    }`}
-  >
-    {(r.status || "pending").charAt(0).toUpperCase() + (r.status || "pending").slice(1)}
-  </span>
-</td>
-
-
-                    <td className="border p-2 flex justify-center">
-                      <button
-                        onClick={() => resolveReport(r.report_id)}
-                        className="bg-green-600 text-white px-2 py-1 rounded "
-                      >
-                        Resolve
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      
     </div>
   );
 };
