@@ -268,10 +268,50 @@ const AdminDashboard = () => {
     });
   };
 
+  // ✅ Reports states & fetch
+  const [showReports, setShowReports] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [reportSearch, setReportSearch] = useState("");
+
+  const fetchReports = useCallback(async () => {
+    const token = localStorage.getItem("adminToken");
+    if (!token) return;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/reports", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReports(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch reports:", err);
+    }
+  }, []);
+
+  const resolveReport = async (reportId) => {
+    const token = localStorage.getItem("adminToken");
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/admin/reports/resolve/${reportId}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        setReports((prev) => prev.filter((r) => r.report_id !== reportId));
+        alert("Report resolved successfully!");
+      }
+    } catch (err) {
+      console.error("Failed to resolve report:", err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
 
-    // ✅ Hide update/delete on outside click
     const handleClickOutside = (e) => {
       if (!e.target.closest("tr") && !e.target.closest(".actions-panel")) {
         setSelectedUser(null);
@@ -281,7 +321,6 @@ const AdminDashboard = () => {
     return () => document.removeEventListener("click", handleClickOutside);
   }, [fetchUsers]);
 
-  // ✅ Auto logout after 10 minutes
   useEffect(() => {
     const timer = setTimeout(() => {
       localStorage.removeItem("adminToken");
@@ -292,12 +331,10 @@ const AdminDashboard = () => {
     return () => clearTimeout(timer);
   }, [navigate]);
 
-  // Filtered users (search)
   const filteredUsers = users.filter((u) =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination logic
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = showAll
@@ -309,6 +346,24 @@ const AdminDashboard = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+
+      <button
+        onClick={() => navigate("/admin/feedback-review")}
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+      >
+        Feedback Review
+      </button>
+
+      {/* ✅ View Reports Button */}
+      <button
+        onClick={() => {
+          setShowReports(true);
+          fetchReports();
+        }}
+        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 ml-2"
+      >
+        View Reports
+      </button>
 
       {/* Error / Success */}
       {error && <p className="text-red-600 mb-2">{error}</p>}
@@ -441,186 +496,244 @@ const AdminDashboard = () => {
       )}
 
       {/* Confirm Delete Modal */}
-{confirmDelete && selectedUser && (
-  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-    <div
-      className="bg-white p-6 rounded shadow-md space-y-4 relative"
-      style={{
-        transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
-      }}
-    >
-      {/* draggable header */}
-      <div
-        className="flex justify-between items-center cursor-move"
-        onMouseDown={handleMouseDown}
-      >
-        <h3 className="font-bold text-lg">Confirm Delete</h3>
-        <button
-          onClick={() => setConfirmDelete(false)}
-          className="text-gray-600 font-bold text-lg"
-        >
-          ✕
-        </button>
-      </div>
-      <p>Are you sure you want to delete {selectedUser?.full_name}?</p>
-      <div className="col-span-2 flex gap-4 mt-4 justify-start">
-        <button
-          onClick={deleteUser}
-          className="bg-red-600 text-white px-4 py-2 rounded"
-        >
-          Delete
-        </button>
-        <button
-          onClick={() => setConfirmDelete(false)}
-          className="bg-gray-400 text-white px-4 py-2 rounded"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      {confirmDelete && selectedUser && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="bg-white p-6 rounded shadow-md space-y-4 relative"
+            style={{
+              transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
+            }}
+          >
+            <div
+              className="flex justify-between items-center cursor-move"
+              onMouseDown={handleMouseDown}
+            >
+              <h3 className="font-bold text-lg">Confirm Delete</h3>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-gray-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            <p>Are you sure you want to delete {selectedUser?.full_name}?</p>
+            <div className="col-span-2 flex gap-4 mt-4 justify-start">
+              <button
+                onClick={deleteUser}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-{/* Confirm Update Modal */}
-{confirmUpdate && selectedUser && (
-  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-    <div
-      className="bg-white p-6 rounded shadow-md w-1/2 relative"
-      style={{
-        transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
-      }}
-    >
-      {/* draggable header */}
-      <div
-        className="flex justify-between items-center cursor-move mb-4"
-        onMouseDown={handleMouseDown}
-      >
-        <h3 className="font-bold text-lg">Update User</h3>
-        <button
-          onClick={() => setConfirmUpdate(false)}
-          className="text-gray-600 font-bold text-lg"
-        >
-          ✕
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-        <input
-          type="text"
-          name="full_name"
-          value={form.full_name}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-        <input
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          name="phone"
-          value={form.phone}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          name="whatsapp"
-          value={form.whatsapp}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          name="district"
-          value={form.district}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          name="city"
-          value={form.city}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
+      {/* Confirm Update Modal */}
+      {confirmUpdate && selectedUser && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <div
+            className="bg-white p-6 rounded shadow-md w-1/2 relative"
+            style={{
+              transform: `translate(${popupPosition.x}px, ${popupPosition.y}px)`,
+            }}
+          >
+            <div
+              className="flex justify-between items-center cursor-move mb-4"
+              onMouseDown={handleMouseDown}
+            >
+              <h3 className="font-bold text-lg">Update User</h3>
+              <button
+                onClick={() => setConfirmUpdate(false)}
+                className="text-gray-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                name="full_name"
+                value={form.full_name}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="whatsapp"
+                value={form.whatsapp}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="district"
+                value={form.district}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              />
 
-        {/* Country Dropdown */}
-        <select
-          name="country"
-          value={form.country}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        >
-          <option value="">Select Country</option>
-          {Country.getAllCountries().map((c) => (
-            <option key={c.isoCode} value={c.isoCode}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+              <select
+                name="country"
+                value={form.country}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value="">Select Country</option>
+                {Country.getAllCountries().map((c) => (
+                  <option key={c.isoCode} value={c.isoCode}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
 
-        {/* State Dropdown */}
-        <select
-          name="state"
-          value={form.state}
-          onChange={handleChange}
-          className="border p-2 rounded"
-          disabled={!form.country}
-        >
-          <option value="">Select State</option>
-          {State.getStatesOfCountry(form.country).map((s) => (
-            <option key={s.isoCode} value={s.isoCode}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+              <select
+                name="state"
+                value={form.state}
+                onChange={handleChange}
+                className="border p-2 rounded"
+                disabled={!form.country}
+              >
+                <option value="">Select State</option>
+                {State.getStatesOfCountry(form.country).map((s) => (
+                  <option key={s.isoCode} value={s.isoCode}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
 
-        {/* Blood Group Dropdown */}
-        <select
-          name="blood_group"
-          value={form.blood_group}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        >
-          <option value="">Select Blood Group</option>
-          {bloodGroups.map((bg, idx) => (
-            <option key={idx} value={bg}>
-              {bg}
-            </option>
-          ))}
-        </select>
+              <select
+                name="blood_group"
+                value={form.blood_group}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value="">Select Blood Group</option>
+                {bloodGroups.map((bg, idx) => (
+                  <option key={idx} value={bg}>
+                    {bg}
+                  </option>
+                ))}
+              </select>
 
-        {/* Availability Dropdown */}
-        <select
-          name="availability"
-          value={form.availability ? "true" : "false"}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        >
-          <option value="true">Available</option>
-          <option value="false">Not Available</option>
-        </select>
+              <select
+                name="availability"
+                value={form.availability ? "true" : "false"}
+                onChange={handleChange}
+                className="border p-2 rounded"
+              >
+                <option value="true">Available</option>
+                <option value="false">Not Available</option>
+              </select>
 
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded col-span-1"
-        >
-          Save
-        </button>
-        <button
-          onClick={() => setConfirmDelete(false)}
-          className="bg-gray-400 text-white px-4 py-2 rounded"
-        >
-          Cancel
-        </button>
-      </form>
-    </div>
-  </div>
-   )}
+              <button
+                type="submit"
+                className="bg-green-600 text-white px-4 py-2 rounded col-span-1"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
+      {/* ✅ Reports Table */}
+      {showReports && (
+        <div className="mt-6">
+          <h2 className="text-xl font-bold mb-2">Pending Donor Reports</h2>
+
+          <input
+            type="text"
+            placeholder="Search by donor name..."
+            value={reportSearch}
+            onChange={(e) => setReportSearch(e.target.value)}
+            className="border p-2 rounded mb-2 w-1/3"
+          />
+
+          <table className="w-full border text-sm">
+            <thead>
+              <tr className="bg-red-500 text-white">
+                <th className="p-2 border">Donor Name</th>
+                <th className="p-2 border">Reason</th>
+                <th className="p-2 border">Description</th>
+                <th className="p-2 border">Reported At</th>
+                <th className="p-2 border">Status</th>
+                <th className="p-2 border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports
+                .filter((r) =>
+                  r.full_name.toLowerCase().includes(reportSearch.toLowerCase())
+                )
+                .map((r) => (
+                  <tr key={r.report_id}>
+                    <td className="border p-2">{r.full_name}</td>
+                    <td className="border p-2">{r.reason}</td>
+                    <td className="border p-2">{r.description}</td>
+                    <td className="border p-2">
+                      {new Date(r.reported_at).toLocaleString()}
+                    </td>
+                    <td className="border p-2">
+  <span
+    className={`font-bold ${
+      (r.status || "pending").toLowerCase() === "pending"
+        ? "text-red-600"
+        : "text-green-600"
+    }`}
+  >
+    {(r.status || "pending").charAt(0).toUpperCase() + (r.status || "pending").slice(1)}
+  </span>
+</td>
+
+
+                    <td className="border p-2 flex justify-center">
+                      <button
+                        onClick={() => resolveReport(r.report_id)}
+                        className="bg-green-600 text-white px-2 py-1 rounded "
+                      >
+                        Resolve
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

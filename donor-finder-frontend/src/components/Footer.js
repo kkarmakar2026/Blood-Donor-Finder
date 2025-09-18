@@ -78,12 +78,8 @@ export function Footer() {
           <a href="/invite-friends" className="hover:underline mx-2">
             Invite Friends
           </a>
-          |
-          <a href="/post-request" className="hover:underline mx-2">
-            Post Blood Request
-          </a>
-          |
-          <Link to="/contact" className="hover:underline mx-2">
+          |      
+           <Link to="/contact" className="hover:underline mx-2">
             Contact Us
           </Link>
         </div>

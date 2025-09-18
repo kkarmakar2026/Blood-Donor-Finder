@@ -1,11 +1,13 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Country, State } from "country-state-city";
+import { Footer } from "../components/Footer";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [editing, setEditing] = useState(false); // controls modal
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -77,7 +79,7 @@ export default function Profile() {
       }
 
       setUser(data.user);
-      setEditing(false); // close popup
+      setEditing(false);
       setSuccess("✅ Profile updated successfully!");
       setTimeout(() => setSuccess(""), 5000);
     } catch (err) {
@@ -131,70 +133,78 @@ export default function Profile() {
       : "";
 
   return (
-    <div className="max-w-xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-lg border">
-      <h2 className="text-2xl font-bold mb-6 text-center">Your Profile</h2>
+    <div className="flex flex-col min-h-screen">
+      {/* Main Content */}
+      <div className="flex-grow">
+        <div className="max-w-xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-lg border">
+          <h2 className="text-2xl font-bold mb-6 text-center">Your Profile</h2>
 
-      {success && <p className="text-green-600 text-center mb-4">{success}</p>}
-      {error && <p className="text-red-600 text-center mb-4">{error}</p>}
+          {success && <p className="text-green-600 text-center mb-4">{success}</p>}
+          {error && <p className="text-red-600 text-center mb-4">{error}</p>}
 
-      {/* Profile Details */}
-      <table className="w-full table-auto border-collapse border border-gray-300 mb-4">
-        <tbody>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Full Name</td>
-            <td className="border px-4 py-2">{user.full_name}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Email</td>
-            <td className="border px-4 py-2">{user.email}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Phone</td>
-            <td className="border px-4 py-2">{user.phone}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">WhatsApp</td>
-            <td className="border px-4 py-2">{user.whatsapp || "-"}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Country</td>
-            <td className="border px-4 py-2">{countryName}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">State</td>
-            <td className="border px-4 py-2">{stateName}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">District</td>
-            <td className="border px-4 py-2">{user.district}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">City</td>
-            <td className="border px-4 py-2">{user.city}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Blood Group</td>
-            <td className="border px-4 py-2">{user.blood_group}</td>
-          </tr>
-          <tr>
-            <td className="border px-4 py-2 font-semibold">Availability</td>
-            <td className="border px-4 py-2">
-              {user.availability ? "Available" : "Not Available"}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div className="text-center">
-        <button
-          className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700"
-          onClick={() => {
-            setEditing(true);
-            setPosition({ x: 0, y: 0 });
-          }}
-        >
-          Edit Profile
-        </button>
+          {/* Profile Details */}
+          <table className="w-full table-auto border-collapse border border-gray-300 mb-4">
+            <tbody>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Full Name</td>
+                <td className="border px-4 py-2">{user.full_name}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Email</td>
+                <td className="border px-4 py-2">{user.email}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Phone</td>
+                <td className="border px-4 py-2">{user.phone}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">WhatsApp</td>
+                <td className="border px-4 py-2">{user.whatsapp || "-"}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Country</td>
+                <td className="border px-4 py-2">{countryName}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">State</td>
+                <td className="border px-4 py-2">{stateName}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">District</td>
+                <td className="border px-4 py-2">{user.district}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">City</td>
+                <td className="border px-4 py-2">{user.city}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Blood Group</td>
+                <td className="border px-4 py-2">{user.blood_group}</td>
+              </tr>
+              <tr>
+                <td className="border px-4 py-2 font-semibold">Availability</td>
+                <td className="border px-4 py-2">
+                  {user.availability ? "Available" : "Not Available"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="text-center">
+            <button
+              className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700"
+              onClick={() => {
+                setEditing(true);
+                setPosition({ x: 0, y: 0 });
+              }}
+            >
+              Edit Profile
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* ✅ Footer fixed at bottom */}
+      <Footer />
 
       {/* ✅ Popup Modal */}
       {editing && (
@@ -207,7 +217,6 @@ export default function Profile() {
               cursor: dragging ? "grabbing" : "default",
             }}
           >
-            {/* ✅ Drag handle + Close button */}
             <div
               className="flex justify-between items-center drag-handle cursor-move mb-4"
               onMouseDown={startDrag}

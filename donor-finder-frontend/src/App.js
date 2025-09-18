@@ -2,7 +2,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import {Footer} from "./components/Footer";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
@@ -11,6 +10,12 @@ import Contact from "./pages/Contact";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import Profile from "./pages/Profile";   // ✅ Import Profile page
+import  Faqs from "./pages/FAQs";
+import Feedback from "./pages/FeedbackForm"
+import FAQs from "./pages/FAQs";
+import FeedbackForm from "./pages/FeedbackForm";
+import AdminReports from "./pages/AdminReport";
+import AdminFeedbackReview from "./pages/AdminFeedbackReview";
 
 function App() {
   return (
@@ -22,13 +27,17 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/donors" element={<Donors />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/profile" element={<Profile />} /> {/* ✅ New profile route */}
+        <Route path="/profile" element={<Profile />} /> 
+        <Route path="/faqs" element={<FAQs/>} />
+        <Route path="/feedback" element={<FeedbackForm/>} />
+        <Route path="/admin/feedback" element={<AdminReports />} />
+        <Route path="/admin/feedback-review" element={<AdminFeedbackReview />} />
+
 
         {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
-      <Footer />
     </Router>
   );
 }

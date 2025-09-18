@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Country, State } from "country-state-city";
+import ReportModal from "./ReportModal";
 
 const FindDonorForm = () => {
   const [form, setForm] = useState({
@@ -15,6 +16,15 @@ const FindDonorForm = () => {
   const [donors, setDonors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ✅ Report Modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState(null);
+  const [reportForm, setReportForm] = useState({
+    reason: "wrong number",
+    description: "",
+  });
+
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,6 +73,22 @@ const FindDonorForm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Report Handlers
+  const handleOpenReport = (donor) => {
+    setSelectedDonor(donor);
+    setShowReportModal(true);
+  };
+
+  const handleSubmitReport = () => {
+    console.log("Submitting report:", {
+      donor: selectedDonor,
+      ...reportForm,
+    });
+    // 👉 API call goes here
+    setShowReportModal(false);
+    setReportForm({ reason: "wrong number", description: "" });
   };
 
   // ✅ Pagination logic applied on donors
@@ -189,39 +215,44 @@ const FindDonorForm = () => {
           <h3 className="text-xl font-bold mb-4 text-red-600">
             Matched Donors
           </h3>
-          <table className="min-w-full bg-white text-black rounded shadow">
-            <thead className="bg-red-600 text-white">
-              <tr>
-                <th className="py-2 px-4 text-center">Name</th>
-                <th className="py-2 px-4 text-center">WhatsApp</th>
-                <th className="py-2 px-4 text-center">Phone</th>
-                <th className="py-2 px-4 text-center">Availability</th>
-                <th className="py-2 px-4 text-center">Report</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentDonors.map((d) => (
-                <tr key={d.user_id} className="border-b">
-                  <td className="py-2 px-4 text-center">{d.full_name}</td>
-                  <td className="py-2 px-4 text-center">{d.phone}</td>
-                  <td className="py-2 px-4 text-center">{d.whatsapp || "-"}</td>
-                  <td className="py-2 px-4 text-center">{d.availability? (
-                  <span className="text-green-600 font-semibold ">Available</span>
-                   ) : (
-                 <span className="text-red-600 font-semibold">Not Available</span>
-                )}</td>
-                  {/* ✅ Report Link */}
-                  <td className="py-2 px-4 text-center">
-                    <a
-                     href={`/report/${d.user_id}`}
-                    className="text-blue-600 hover:text-blue-800"
-                     >
-                      Report
-                     </a></td>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white text-black rounded shadow">
+              <thead className="bg-red-600 text-white">
+                <tr>
+                  <th className="py-2 px-4 text-center">Name</th>
+                  <th className="py-2 px-4 text-center">WhatsApp</th>
+                  <th className="py-2 px-4 text-center">Phone</th>
+                  <th className="py-2 px-4 text-center">Availability</th>
+                  <th className="py-2 px-4 text-center">Report</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentDonors.map((d) => (
+                  <tr key={d.user_id} className="border-b">
+                    <td className="py-2 px-4 text-center">{d.full_name}</td>
+                    <td className="py-2 px-4 text-center">{d.phone}</td>
+                    <td className="py-2 px-4 text-center">{d.whatsapp || "-"}</td>
+                    <td className="py-2 px-4 text-center">
+                      {d.availability ? (
+                        <span className="text-green-600 font-semibold">Available</span>
+                      ) : (
+                        <span className="text-red-600 font-semibold">Not Available</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-4 text-center">
+                      <button
+                        onClick={() => handleOpenReport(d)}
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Report
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* ✅ Pagination (styled like you wanted) */}
           {!showAll && totalPages >= 1 && (
@@ -278,9 +309,18 @@ const FindDonorForm = () => {
           )}
         </div>
       )}
+
+      {/* ✅ Report Modal */}
+      <ReportModal
+        donor={selectedDonor}
+        show={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleSubmitReport}
+        form={reportForm}
+        setForm={setReportForm}
+      />
     </>
   );
 };
 
 export default FindDonorForm;
-

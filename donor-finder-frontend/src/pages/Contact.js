@@ -10,7 +10,7 @@ export default function Contact() {
       <div className="mt-6 space-y-2 text-center">
         <p>Email: support@lifeconnect.org</p>
         <p>Phone: +91 7063232326</p>
-        <p>Address: Sodepur, Hooghly, WB, India</p>
+        <p>Address: Sodepur, Hooghly, WB-712415, India</p>
       </div>
     </div>
   );

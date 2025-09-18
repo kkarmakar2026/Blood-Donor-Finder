@@ -8,6 +8,7 @@ import { verifyAdminToken } from "../middleware/auth.js";
 dotenv.config();
 const router = express.Router();
 
+
 // ===========================
 //  Admin Login
 // ===========================
@@ -26,7 +27,6 @@ router.post("/login", async (req, res) => {
     }
 
     const admin = result.rows[0];
-
     const validPassword = await bcrypt.compare(password, admin.password);
     if (!validPassword) {
       return res.status(400).json({ error: "Invalid email or password" });
@@ -203,5 +203,158 @@ router.delete("/users/:id", verifyAdminToken, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+// ===========================
+// Submit a new report (public)
+// ===========================
+router.post("/reports", async (req, res) => {
+  try {
+    const { donor_name, email, blood_group, reason, description } = req.body;
+
+    if (!donor_name || !email || !blood_group || !reason) {
+      return res.status(400).json({ error: "donor_name, email, blood_group, and reason are required" });
+    }
+
+    const userResult = await pool.query(
+      "SELECT user_id FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(404).json({ error: "Donor not found" });
+    }
+
+    const donor_id = userResult.rows[0].user_id;
+
+    const reportResult = await pool.query(
+      `INSERT INTO donor_reports (donor_id, reason, description)
+       VALUES ($1, $2, $3)
+       RETURNING report_id, donor_id, reason, description, status, reported_at`,
+      [donor_id, reason, description || null]
+    );
+
+    res.status(201).json({
+      message: "Report submitted successfully",
+      report: reportResult.rows[0],
+    });
+  } catch (err) {
+    console.error("Submit report error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================
+// Admin Get Pending Reports + Search
+// ===========================
+router.get("/reports", verifyAdminToken, async (req, res) => {
+  const { search } = req.query;
+
+  try {
+    const result = await pool.query(
+      `SELECT r.report_id, r.reason, r.description, r.reported_at, r.status,
+              u.full_name, u.blood_group, u.phone, u.city, u.district
+       FROM donor_reports r
+       JOIN users u ON r.donor_id = u.user_id
+       WHERE r.status = 'pending'
+         AND ($1::text IS NULL OR LOWER(u.full_name) LIKE LOWER('%' || $1 || '%'))
+       ORDER BY r.reported_at DESC`,
+      [search?.trim() || null]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch reports error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ===========================
+// Feedback Routes
+// ===========================
+
+// POST - Submit new feedback (public)
+router.post("/feedback", async (req, res) => {
+  try {
+    const { name, email, mobile, feedback } = req.body;
+
+    if (!name || !email || !mobile || !feedback) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO feedback (name, email, mobile, feedback) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING feedback_id, name, email, mobile, feedback, created_at`,
+      [name, email, mobile, feedback]
+    );
+
+    res.status(201).json({
+      message: "Feedback submitted successfully",
+      feedback: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Submit feedback error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET - Fetch feedback with pagination + search
+router.get("/feedback", verifyAdminToken, async (req, res) => {
+  try {
+    let { page, limit, search } = req.query;
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
+    const offset = (page - 1) * limit;
+
+    let query = `SELECT feedback_id, name, email, mobile, feedback, created_at 
+                 FROM feedback`;
+    let countQuery = `SELECT COUNT(*) FROM feedback`;
+    let values = [];
+
+    if (search) {
+      query += ` WHERE name ILIKE $1 OR email ILIKE $1 OR mobile ILIKE $1`;
+      countQuery += ` WHERE name ILIKE $1 OR email ILIKE $1 OR mobile ILIKE $1`;
+      values.push(`%${search}%`);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+    values.push(limit, offset);
+
+    const result = await pool.query(query, values);
+    const countResult = await pool.query(countQuery, search ? [`%${search}%`] : []);
+
+    res.json({
+      feedbacks: result.rows,
+      total: parseInt(countResult.rows[0].count),
+      page,
+      limit,
+    });
+  } catch (err) {
+    console.error("Fetch feedback error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// DELETE Feedback
+router.delete("/feedback/:id", verifyAdminToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM feedback WHERE feedback_id = $1 RETURNING *",
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Feedback not found" });
+    }
+
+    res.json({ message: "Feedback deleted successfully" });
+  } catch (err) {
+    console.error("Delete feedback error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 export default router;
