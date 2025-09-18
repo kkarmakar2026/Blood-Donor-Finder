@@ -356,5 +356,46 @@ router.delete("/feedback/:id", verifyAdminToken, async (req, res) => {
   }
 });
 
+// Resolve a report (move to resolved_reports and delete from reports)
+router.put("/reports/:id/resolve", verifyAdminToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Fetch report details
+    const reportResult = await pool.query(
+      `SELECT * FROM donor_reports WHERE report_id = $1`,
+      [id]
+    );
+
+    if (reportResult.rows.length === 0) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    const report = reportResult.rows[0];
+
+    // 2. Insert into resolved_reports
+    await pool.query(
+      `INSERT INTO resolved_reports (report_id, donor_id, reason, description, reported_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        report.report_id,
+        report.donor_id,
+        report.reason,
+        report.description,
+        report.reported_at,
+      ]
+    );
+
+    // 3. Delete from reports (pending table)
+    await pool.query(`DELETE FROM donor_reports WHERE report_id = $1`, [id]);
+
+    res.json({ message: "Report resolved successfully" });
+  } catch (err) {
+    console.error("Resolve report error:", err.message);
+    res.status(500).json({ error: "Server error while resolving report" });
+  }
+});
+
+
 
 export default router;

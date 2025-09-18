@@ -294,7 +294,7 @@ const AdminDashboard = () => {
     const token = localStorage.getItem("adminToken");
     try {
       const res = await fetch(
-        `http://localhost:5000/api/admin/reports/resolve/${reportId}`,
+        `http://localhost:5000/api/admin/reports/${reportId}/resolve`,
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` },
